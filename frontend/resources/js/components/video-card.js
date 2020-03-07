@@ -17,8 +17,8 @@ import _ from 'lodash';
 
 export default function(video, query, expanded) {
   const title = video.name;
-  const label_annotations = video.annotations.shot_label_annotations;
-  const tags = video.annotations.shot_label_annotations.map(label => label.entity.description).join(', ');
+  const label_annotations = (video.annotations && video.annotations.length) ? video.annotations.shot_label_annotations : [];
+  const tags = (video.annotations && video.annotations.length) ?  video.annotations.shot_label_annotations.map(label => label.entity.description).join(', ') : [];
   // DEFAULT VALUES
   let header = `<h3 class="text-body">${title}</h3>`;
   let selectedTags = tags.length > 90 ? `${tags.substring(0,90)}...` : tags;

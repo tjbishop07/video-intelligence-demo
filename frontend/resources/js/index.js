@@ -16,11 +16,10 @@
 import $ from 'jquery';
 import _ from 'lodash';
 import Navigo from 'navigo';
-import idbKeyval from 'idb-keyval';
-
+import { get, set } from 'idb-keyval';
 
 // CONSTANTS
-import {VIDEO_API, ROOT_URL} from './constants';
+import { VIDEO_API, ROOT_URL } from './constants';
 
 // PAGES
 import HomePage from './pages/homepage';
@@ -39,54 +38,71 @@ class App {
     // RENDER LOADING SPINNER
     this.renderLoadingIndicator();
 
-    idbKeyval.get('videos')
-    .then((data) => {
-      // IF DATA EXISTS RUN APP
-      if(typeof data != 'undefined') {
-        this.initApp();
-      }
-      // OTHERWISE FETCH VIDEO DATA
-      else {
-        return Promise.resolve()
-          .then(() => {
-            const that = this;
+    get('videos').then((data) => {
 
-            return $.ajax({
-              url: VIDEO_API,
+      // console.log('GOT DATA', data);
+      // // IF DATA EXISTS RUN APP
+      // if(typeof data != 'undefined') {
+      //   this.initApp();
+      // }
+      // // OTHERWISE FETCH VIDEO DATA
+      // else {
 
-              beforeSend() {
-                $('#status').text('Loading video library...');
-              },
-
-              complete() {
-                $('#status').text('');
-              },
-
-              success(msg, status, xhr) {
-                const videos = xhr.responseJSON;
-                const sortedVideos = _.sortBy(videos, ['name']);
-                idbKeyval.set('videos', sortedVideos)
-                  .then(() => {
-                    console.log('got videos');
-                    that.initApp();
-                  })
-                  .catch(err => console.log('getting vids failed', err));
+      // }    
 
 
-                this.initApp();
-              }
-            });
+      return Promise.resolve()
+        .then(() => {
+          const that = this;
 
-          }).then(() => {
-            return idbKeyval.get('videos');    
-          }).then((videos) => {
-              const videoCards = videos.map((video) => VideoCard(video)).join('');
-              this.$stage.html(this.template(videoCards));
-          })
-          .catch((err) => {
-            console.log('error', err);
+          this.clearStage();
+          console.log('GET VIDEO DATA', VIDEO_API);
+          return $.ajax({
+            url: VIDEO_API,
+
+            beforeSend() {
+              $('#status').text('Loading video library...');
+            },
+
+            complete() {
+              $('#status').text('');
+            },
+
+            success(msg, status, xhr) {
+
+              const videos = xhr.responseJSON;
+              console.log('GOT RESPONSE', videos);
+
+              const sortedVideos = _.sortBy(videos, ['name']);
+              set('videos', sortedVideos)
+                .then(() => {
+                  console.log('got videos');
+                  that.initApp();
+                })
+                .catch(err => console.log('getting vids failed', err));
+
+
+              this.initApp();
+            },
+
+            error(err) {
+              console.log('ERROR', err);
+            }
           });
-      }        
+
+        }).then(() => {
+          return get('videos');
+        }).then((videos) => {
+          if (videos && videos.length) {
+            const videoCards = videos.map((video) => VideoCard(video)).join('');
+            this.$stage.html(this.template(videoCards));
+          }
+        })
+        .catch((err) => {
+          console.log('error', err);
+        });
+
+
     });
 
   }
@@ -96,6 +112,7 @@ class App {
   }
 
   initApp() {
+    console.log('INIT APP');
     this.initRouter();
     this.activateSearchBar();
   }
@@ -119,13 +136,13 @@ class App {
         this.renderPage('search', params.query);
       }
     })
-    .resolve();
+      .resolve();
   }
 
 
   renderPage(page, data) {
     // CLEAR PREVIOUS PAGE
-    if(this.currentPage && this.currentPage.destroy) {
+    if (this.currentPage && this.currentPage.destroy) {
       this.currentPage.destroy();
       this.currentPage = null;
     }
@@ -134,19 +151,19 @@ class App {
     this.clearStage();
     this.$search.val('');
 
-    switch(page) {
+    switch (page) {
       case 'home': this.currentPage = new HomePage(this.$stage, this.router); break;
       case 'search': this.currentPage = new SearchPage(this.$stage, this.router, data); break;
       case 'video': this.currentPage = new VideoPage(this.$stage, this.router, data); break;
       case 'profile': this.currentPage = new ProfilePage(this.$stage, this.router); break;
     }
 
-    window.scrollTo(0,0);
+    window.scrollTo(0, 0);
   }
 
   activateSearchBar() {
     this.$search.keypress((e) => {
-      if(e.which == 13){
+      if (e.which == 13) {
         const query = this.$search.val();
         this.$search.blur();
         this.router.navigate(`/search/${query}`);
@@ -171,7 +188,7 @@ class App {
       success(msg, status, xhr) {
         const videos = xhr.responseJSON;
         const sortedVideos = _.sortBy(videos, ['name']);
-        idbKeyval.set('videos', sortedVideos)
+        set('videos', sortedVideos)
           .then(() => {
             console.log('It worked here!');
             that.initApp();
@@ -190,6 +207,6 @@ class App {
 export default App;
 
 // START APPLICATION
-$(document).ready(function() {
+$(document).ready(function () {
   new App();
 });

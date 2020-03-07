@@ -89,6 +89,7 @@ app.get('/api/videos', (req, res) => {
     if (!err) {
       let fileArray = [];
 
+      // TODO: ANNOATIONS NOT LOADING?!
       files.forEach(function(file) {
         const videoAnnotationBucket = storageClient.bucket(config.video_json_bucket);
         const baseFileName = file.metadata.name.substring(0, file.metadata.name.indexOf('.'));
@@ -96,6 +97,7 @@ app.get('/api/videos', (req, res) => {
         const annotationFile = videoAnnotationBucket.file(videoAnnotationFilename);
         
         // GET ANNONATIONS FOR EACH FILE
+        console.log('GET ANNOTATION FILE')
         annotationFile.get(function(error, fileData) {
           if (error) {
             console.log('error getting file', error);
@@ -113,7 +115,7 @@ app.get('/api/videos', (req, res) => {
                   name: file.metadata.name,
                   link: file.metadata.mediaLink,
                   url_safe_id: (file.metadata.name).replace('/', '-').replace('.','-'),
-                  annotations: body.annotation_results[0],
+                  annotations: (body && body.annotation_results) ? body.annotation_results[0] : [],
                   thumbnail: `https://storage.googleapis.com/${config.thumbnail_bucket}/${baseFileName}.png`,
                   preview: `https://storage.googleapis.com/${config.thumbnail_bucket}/${baseFileName}-preview.png`
                 });

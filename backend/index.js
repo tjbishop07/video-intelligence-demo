@@ -18,17 +18,26 @@ const storage = new Storage({
     projectId: config.cloud_project_id
 });
 
-const video = require('@google-cloud/video-intelligence');
 const client = new video.VideoIntelligenceServiceClient({
     projectId: config.cloud_project_id,
     keyfileName: './keyfile.json'
 });
 
 const ffmpeg = require('fluent-ffmpeg');
-const path = require('path');
-const binPath = path.resolve(__dirname, 'ffmpeg');
-const ffmpegPath = path.resolve(binPath, 'ffmpeg');
-const ffprobePath = path.resolve(binPath, 'ffprobe');
+// const path = require('path');
+// const binPath = path.resolve(__dirname, 'ffmpeg');
+// const ffmpegPath = path.resolve(binPath, 'ffmpeg');
+// const ffprobePath = path.resolve(binPath, 'ffprobe');
+
+// const ffmpeg = require('fluent-ffmpeg');
+
+const ffmpegPath = require('@ffmpeg-installer/ffmpeg').path;
+const ffprobePath = require('@ffprobe-installer/ffprobe').path;
+
+// ffmpeg.setFfmpegPath(ffmpegPath);
+// ffmpeg.setFfprobePath(ffprobePath);
+
+
 const rimraf = require('rimraf');
 
 ffmpeg.setFfmpegPath(ffmpegPath);
@@ -56,94 +65,112 @@ function downloadFile(file, fileName) {
     });
 }
 
-exports.analyzeVideo = function analyzeVideo (event, callback) {
+exports.analyzeVideo = function analyzeVideo (data, context, callback) {
     
     const allowedFileTypes = ["mp4", "mpeg4", "avi", "webm", "mov", "mpg"];
+    const file = data;
 
-    const file = event.data;
-    const isDelete = file.resourceState === 'not_exists';
+        const isDelete = file.resourceState === 'not_exists';
 
-    if (isDelete) {
-     console.log(`File ${file.name} deleted.`);
-    } else {
-        const bucketName = file.bucket;
-        console.log('fileinfo: ',file);
-        const fileName = file.name;
-        const fileType = fileName.split('.').pop();
-
-        if (allowedFileTypes.indexOf(fileType.toLowerCase()) != -1) {
-            const request = {
-                inputUri: "gs://" + bucketName + '/' + fileName,
-                outputUri: "gs://ga-demo-json/" + fileName.replace(".", "").replace("/", "") + ".json",
-                features: ['LABEL_DETECTION', 'SHOT_CHANGE_DETECTION']
-            }
-
-            client.annotateVideo(request)
-                .then(results => {
-                    const operation = results[0];
-                    console.log('waiting for annotations');
-                    return operation.promise();
-            })
-            .then(results => {
-                const annotations = results[0].annotationResults[0];
-                console.log('got annotations', annotations);
-            })
-            .catch(err => {
-                console.error('Error getting video annotations: ', err);
-            });
-
+        if (isDelete) {
+         console.log(`File ${file.name} deleted.`);
         } else {
-            console.log(videoFilename + " is not a video file.")
+            const bucketName = file.bucket;
+            console.log('fileinfo -- ',file);
+            const fileName = file.name;
+            const fileType = fileName.split('.').pop();
+    
+            if (allowedFileTypes.indexOf(fileType.toLowerCase()) != -1) {
+
+                const request = {
+                    inputUri: "gs://" + bucketName + '/' + fileName,
+                    outputUri: "gs://teslacam_json_output/" + fileName.replace(".", "").replace("/", "") + ".json",
+                    features: ['LABEL_DETECTION']
+                }
+
+                console.log('PROCESS FILE...', request);
+
+    
+                client.annotateVideo(request)
+                    .then(results => {
+                        const operation = results[0];
+                        console.log('waiting for annotations');
+                        return operation.promise();
+                })
+                .then(results => {
+                    const annotations = results[0].annotationResults[0];
+                    console.log('got annotations', annotations);
+                    // TODO: How to add this to store?
+                })
+                .catch(err => {
+                    console.error('Error getting video annotations: ', err);
+                });
+    
+            } else {
+                console.log(videoFilename + " is not a video file.")
+            }
+    
         }
 
-    }
+
     callback();
 }
 
-exports.generateThumbnail = function generateThumbnail (event) {
-    return Promise.resolve()
+exports.generateThumbnail = function generateThumbnail (data, context, callback) {
+    Promise.resolve()
       .then(() => {
         rimraf('/tmp', function() { console.log('deleted tmp/') });
-        const file = event.data;
-        const isDelete = file.resourceState === 'not_exists';
-        console.log(event, file);
 
-        if (isDelete) {
-            console.log('deleting file');
-            return true;
+        console.log('GEN THUMB', data);
+        const file = data;
+
+        if (file) {
+            const isDelete = file.resourceState === 'not_exists';
+    
+            if (isDelete) {
+                console.log('deleting file');
+                return true;
+            } else {
+                
+                const fileName = file.name;
+                const videoFile = videoBucket.file(fileName);
+                console.log('downloading file...', fileName)
+                return downloadFile(videoFile, fileName);
+            }
         } else {
-            
-            const fileName = file.name;
-            const videoFile = videoBucket.file(fileName);
-            console.log('downloading file...')
-            return downloadFile(videoFile, fileName);
+            console.error('NO FILE FOUND');
         }
       }).then((fileinfo) => {
         const fileName = fileinfo;
         console.log(fileName);
 
-        let pngFilepath = fileName.substr(5, event.data.name.lastIndexOf('.')).replace(".", "").replace("/", "") + '.png';
+        if (fileName) {
+            let pngFilepath = fileName.substr(5, data.name.lastIndexOf('.')).replace(".", "").replace("/", "") + '.png';
 
-        return new Promise((resolve, reject) => {
-            ffmpeg(fileName)
-                .screenshots({
-                    count: 1,
-                    timemarks: ['33%'],
-                    size: '230x144',
-                    folder: '/tmp',
-                    filename: pngFilepath
-                })
-                .frames(1)
-                .on('end', function() {
-                    console.log('got a thumbnail at ' + pngFilepath);
-                    resolve(pngFilepath); 
-                })
-                .on('error', function(err, stdout, stderr) {
-                    console.log('error generating thumbnail:', err.message);
-                    reject(err);
-                });
-                // .run()
-        });            
+            return new Promise((resolve, reject) => {
+                ffmpeg(fileName)
+                    .screenshots({
+                        count: 1,
+                        timemarks: ['33%'],
+                        size: '230x144',
+                        folder: '/tmp',
+                        filename: pngFilepath
+                    })
+                    .frames(1)
+                    .on('end', function() {
+                        console.log('got a thumbnail at ' + pngFilepath);
+                        resolve(pngFilepath); 
+                    })
+                    .on('error', function(err, stdout, stderr) {
+                        console.log('error generating thumbnail:', err.message);
+                        reject(err);
+                    });
+                    // .run()
+            }); 
+        } else {
+            Promise.reject('OOPS');
+        }
+
       }).then((thumbnailPath) => {
         return new Promise((resolve, reject) => {
             console.log('preparing to upload thumbnail to GCS...');
@@ -164,49 +191,59 @@ exports.generateThumbnail = function generateThumbnail (event) {
       });
 }
 
-exports.generatePreview = function generatePreview(event) {
-    return Promise.resolve()
+exports.generatePreview = function generatePreview(data, context, callback) {
+    Promise.resolve()
       .then(() => {
         rimraf('/tmp', function() { console.log('deleted tmp/') });
-        const file = event.data;
-        const isDelete = file.resourceState === 'not_exists';
-        console.log(event, file);
 
-        if (isDelete) {
-            console.log('deleting file');
-            return true;
+        console.log('GEN PREVIEW', data);
+        const file = data;
+
+        if (file) {
+            const isDelete = file.resourceState === 'not_exists';
+    
+            if (isDelete) {
+                console.log('deleting file');
+                return true;
+            } else {
+                
+                const fileName = file.name;
+                const videoFile = videoBucket.file(fileName);
+                console.log('downloading file...', fileName);
+                return downloadFile(videoFile, fileName);
+            }
         } else {
-            
-            const fileName = file.name;
-            const videoFile = videoBucket.file(fileName);
-            console.log('downloading file...')
-            return downloadFile(videoFile, fileName);
+            console.error('NO FILE FOUND');
         }
       }).then((fileinfo) => {
         const fileName = fileinfo;
         console.log(fileName);
 
-        let pngFilepath = fileName.substr(5, event.data.name.lastIndexOf('.')).replace(".", "").replace("/", "") + '-preview.png';
+        if (fileName) {
+            let pngFilepath = fileName.substr(5, data.name.lastIndexOf('.')).replace(".", "").replace("/", "") + '-preview.png';
 
-        return new Promise((resolve, reject) => {
-            ffmpeg(fileName)
-                .screenshots({
-                    count: 1,
-                    timemarks: ['33%'],
-                    size: '699x394',
-                    folder: '/tmp',
-                    filename: pngFilepath
-                })
-                .frames(1)
-                .on('end', function() {
-                    console.log('got a thumbnail at ' + pngFilepath);
-                    resolve(pngFilepath); 
-                })
-                .on('error', function(err, stdout, stderr) {
-                    console.log('error generating thumbnail:', err.message);
-                    reject(err);
-                });
-        });            
+            return new Promise((resolve, reject) => {
+                ffmpeg(fileName)
+                    .screenshots({
+                        count: 1,
+                        timemarks: ['33%'],
+                        size: '699x394',
+                        folder: '/tmp',
+                        filename: pngFilepath
+                    })
+                    .frames(1)
+                    .on('end', function() {
+                        console.log('got a thumbnail at ' + pngFilepath);
+                        resolve(pngFilepath); 
+                    })
+                    .on('error', function(err, stdout, stderr) {
+                        console.log('error generating thumbnail:', err.message);
+                        reject(err);
+                    });
+            });   
+        } else{
+            Promise.reject('OOPS');
+        }         
       }).then((thumbnailPath) => {
         return new Promise((resolve, reject) => {
             console.log('preparing to upload thumbnail to GCS...');

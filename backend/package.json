@@ -10,7 +10,12 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@ffmpeg-installer/ffmpeg": "^1.0.20",
+    "@ffprobe-installer/ffprobe": "^1.0.12",
     "@google-cloud/storage": "^0.6.1",
-    "@google-cloud/video-intelligence": "^0.1.0"
+    "@google-cloud/video-intelligence": "^2.2.2",
+    "fluent-ffmpeg": "^2.0.0",
+    "idb-keyval": "3.2.0",
+    "rimraf": "3.0.0"
   }
 }
