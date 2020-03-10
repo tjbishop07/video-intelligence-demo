@@ -12,8 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import store from 'store';
-import { get, set } from 'idb-keyval';
+import { get } from 'idb-keyval';
 import VideoCard from '../components/video-card';
 
 class HomePage {

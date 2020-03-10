@@ -13,17 +13,16 @@
 // limitations under the License.
 
 import $ from 'jquery';
-import store from 'store';
 import _ from 'lodash';
 import VideoCard from '../components/video-card';
-import idbKeyval from 'idb-keyval';
+import { get } from 'idb-keyval';
 
 class SearchPage {
   constructor(stage, router, query) {
     this.$stage = stage;
     this.router = router;
     this.query = query;
-    idbKeyval.get('videos').then(val => {
+    get('videos').then(val => {
       this.videos = val;
       this.results = this.getSearchResults();
       this.results = _.sortBy(this.results, ['name']);
@@ -35,7 +34,7 @@ class SearchPage {
 
   getSearchResults() {
     const results = _.filter(this.videos, (video) => {
-      const labels = video.annotations.shot_label_annotations;
+      const labels = video.annotations && video.annotations.length ? video.annotations.shot_label_annotations : [];
 
       const hasQuery = _.find(labels, (label) => {
         return _.toLower(label.entity.description) === _.toLower(this.query);

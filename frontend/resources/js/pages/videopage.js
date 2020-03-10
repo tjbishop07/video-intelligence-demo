@@ -13,10 +13,8 @@
 // limitations under the License.
 
 import _ from 'lodash';
-import store from 'store';
 import $ from 'jquery';
-// import idbKeyval from 'idb-keyval';
-import { get, set } from 'idb-keyval';
+import { get } from 'idb-keyval';
 
 import VideoCard from '../components/video-card';
 
@@ -33,7 +31,7 @@ class VideoPage {
       this.video = _.find(this.videos, {url_safe_id: videoId});
       console.log('FOUND VIDEO', this.video);
       this.title = this.video.name;
-      this.sortedLabels = (this.video.annotations && this.video.annotations.length) ? this.getSortedLabels(this.video.annotations.shot_label_annotations) : [];
+      this.sortedLabels = this.getSortedLabels(this.video.annotations.shot_label_annotations)
       // RENDER PAGE
       this.render();
       return this;
@@ -72,12 +70,8 @@ class VideoPage {
 
   activateLinks() {
     this.$viewjson.on('click', () => {
-      console.log(this.video);
 
-      window.location.href = 'https://storage.cloud.google.com/teslacam_json_output/test6mp4.json';
-      // TODO: Load this json for the video file
-// https://storage.cloud.google.com/teslacam_json_output/test6mp4.json
-
+      // window.location.href = 'https://storage.cloud.google.com/teslacam_json_output/test6mp4.json';
       
       let videoJson = JSON.stringify(this.video.annotations, null, 2);
       let x = window.open();
@@ -102,6 +96,7 @@ class VideoPage {
   renderVideoLength() {
     // WAIT FOR METADATA TO LOAD
     this.$video.on('loadedmetadata', () => {
+      console.log('VID METADATA LOADED', this.$video[0]);
       const mins = parseInt(this.$video[0].duration / 60, 10);
       let seconds = parseInt(this.$video[0].duration % 60, 10);
 
@@ -164,6 +159,8 @@ class VideoPage {
   }
 
   renderGraph() {
+
+    console.log('RENDER GRAPH CALLED');
     const sortedLabels = this.getSortedLabels(this.video.annotations.shot_label_annotations);
 
     for (var i = 0; i < sortedLabels.length; i++) {
@@ -237,7 +234,7 @@ class VideoPage {
 
     // FIND VIDEOS WITH THOSE LABELS
     _.each(this.videos, (video) => {
-      const labels = (video.annotations && video.annotations.length) ? video.annotations.shot_label_annotations : [];
+      const labels = video.annotations.shot_label_annotations;
 
       if(_.find(labels, ['entity.description', ...top5Labels])) {
         relatedVideos.push(video);

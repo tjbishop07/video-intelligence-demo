@@ -40,20 +40,9 @@ class App {
 
     get('videos').then((data) => {
 
-      // console.log('GOT DATA', data);
-      // // IF DATA EXISTS RUN APP
-      // if(typeof data != 'undefined') {
-      //   this.initApp();
-      // }
-      // // OTHERWISE FETCH VIDEO DATA
-      // else {
-
-      // }    
-
-
+      const that = this;
       return Promise.resolve()
         .then(() => {
-          const that = this;
 
           this.clearStage();
           console.log('GET VIDEO DATA', VIDEO_API);
@@ -80,9 +69,7 @@ class App {
                   that.initApp();
                 })
                 .catch(err => console.log('getting vids failed', err));
-
-
-              this.initApp();
+              that.initApp();
             },
 
             error(err) {
@@ -93,10 +80,8 @@ class App {
         }).then(() => {
           return get('videos');
         }).then((videos) => {
-          if (videos && videos.length) {
-            const videoCards = videos.map((video) => VideoCard(video)).join('');
-            this.$stage.html(this.template(videoCards));
-          }
+          // const videoCards = videos.map((video) => VideoCard(video)).join('');
+          // this.$stage.html(this.template(videoCards));
         })
         .catch((err) => {
           console.log('error', err);
@@ -172,8 +157,6 @@ class App {
   }
 
   getVideoData() {
-    const that = this;
-
     $.ajax({
       url: VIDEO_API,
 
@@ -190,8 +173,7 @@ class App {
         const sortedVideos = _.sortBy(videos, ['name']);
         set('videos', sortedVideos)
           .then(() => {
-            console.log('It worked here!');
-            that.initApp();
+            initApp();
           })
           .catch(err => console.log('It failed!', err));
       }

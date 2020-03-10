@@ -89,7 +89,6 @@ app.get('/api/videos', (req, res) => {
     if (!err) {
       let fileArray = [];
 
-      // TODO: ANNOATIONS NOT LOADING?!
       files.forEach(function(file) {
         const videoAnnotationBucket = storageClient.bucket(config.video_json_bucket);
         const baseFileName = file.metadata.name.substring(0, file.metadata.name.indexOf('.'));
@@ -97,7 +96,6 @@ app.get('/api/videos', (req, res) => {
         const annotationFile = videoAnnotationBucket.file(videoAnnotationFilename);
         
         // GET ANNONATIONS FOR EACH FILE
-        console.log('GET ANNOTATION FILE')
         annotationFile.get(function(error, fileData) {
           if (error) {
             console.log('error getting file', error);

@@ -18,6 +18,7 @@ const storage = new Storage({
     projectId: config.cloud_project_id
 });
 
+const video = require('@google-cloud/video-intelligence');
 const client = new video.VideoIntelligenceServiceClient({
     projectId: config.cloud_project_id,
     keyfileName: './keyfile.json'
@@ -76,7 +77,6 @@ exports.analyzeVideo = function analyzeVideo (data, context, callback) {
          console.log(`File ${file.name} deleted.`);
         } else {
             const bucketName = file.bucket;
-            console.log('fileinfo -- ',file);
             const fileName = file.name;
             const fileType = fileName.split('.').pop();
     
@@ -99,8 +99,6 @@ exports.analyzeVideo = function analyzeVideo (data, context, callback) {
                 })
                 .then(results => {
                     const annotations = results[0].annotationResults[0];
-                    console.log('got annotations', annotations);
-                    // TODO: How to add this to store?
                 })
                 .catch(err => {
                     console.error('Error getting video annotations: ', err);
