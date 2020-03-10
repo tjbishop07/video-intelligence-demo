@@ -19,7 +19,6 @@ class HomePage {
   constructor(stage, router) {
     this.$stage = stage;
     this.router = router;
-
     this.render();
     this.router.updatePageLinks();
     return this;
@@ -40,7 +39,6 @@ class HomePage {
   render() {
 
     get('videos').then(videos => {
-      console.log('HOME VIDEOS', videos);
       const videoCards = videos.map((video) => VideoCard(video)).join('');
       this.$stage.html(this.template(videoCards));
     });
